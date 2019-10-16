@@ -106,16 +106,22 @@ def check_ticker(email, subscription):
     response = requests.get(Config.ALPHAVANTAGE_REQUEST.format(subscription['ticker']))
     json_result = json.loads(response.text)
     if 'Realtime Currency Exchange Rate' not in json_result:
+        to_delete = True
         send_mail(email, f'{subscription["ticker"]} is incorrect ticker name, we gonna delete it.')
     else:
         current_price = float(json_result['Realtime Currency Exchange Rate']['5. Exchange Rate'])
+        to_delete = False
+
         if subscription.get('max_price', None) is not None and subscription['max_price'] < current_price:
+            to_delete = True
             msg = f"{subscription['ticker']} exceeded {subscription['max_price']}. Now it's {current_price}"
             send_mail(email, msg)
         if subscription.get('min_price', None) is not None and subscription['min_price'] > current_price:
+            to_delete = True
             msg = f"{subscription['ticker']} decreased {subscription['min_price']}. Now it's {current_price}"
             send_mail(email, msg)
-    Subscriber.delete_ticker_subscription(email, subscription['ticker'])
+    if to_delete:
+        Subscriber.delete_ticker_subscription(email, subscription['ticker'])
 
 
 def monitor():
